@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ផ្ទាំងគ្រប់គ្រងទិន្នន័យ CheckMe</title>
+    <!-- ភ្ជាប់ Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ប្រើ Font Inter សម្រាប់អង់គ្លេស និង Kantumruy Pro សម្រាប់ខ្មែរ */
+        body {
+            font-family: 'Inter', 'Kantumruy Pro', sans-serif;
+            background-color: #f4f7f6;
+        }
+        /* លាក់ scrollbar សម្រាប់ webkit (Chrome, Safari) */
+        .page-container::-webkit-scrollbar {
+            display: none;
+        }
+        /* លាក់ scrollbar សម្រាប់ Firefox */
+        .page-container {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 md:p-8 pb-24 md:pb-8"> <!-- បន្ថែម Padding-bottom សម្រាប់ Mobile Nav -->
+
+    <div class="max-w-5xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+        <header class="bg-gradient-to-r from-blue-600 to-blue-800 p-6">
+            <h1 class="text-3xl font-bold text-white">ផ្ទាំងគ្រប់គ្រងការកំណត់ម៉ោង (CheckMe Admin)</h1>
+        </header>
+
+        <!-- សម្រាប់បង្ហាញសារ Status (Loading, Success, Error) -->
+        <div id="statusMessage" class="px-6 py-4 border-b border-gray-200">
+            <p class="text-gray-600">កំពុងភ្ជាប់ទៅកាន់ Firebase...</p>
+        </div>
+
+        <!-- Desktop Tab Navigation (បង្ហាញតែលើจอធំ) -->
+        <div class="hidden md:flex border-b border-gray-200 px-6">
+            <button id="tab-shifts" 
+                    class="tab-btn p-4 font-medium text-blue-600 border-b-4 border-blue-600">
+                កំណត់វេនធ្វើការ
+            </button>
+            <button id="tab-late" 
+                    class="tab-btn p-4 font-medium text-gray-500 hover:text-gray-700">
+                កំណត់ត្រាចូលយឺត
+            </button>
+        </div>
+
+        <!-- ផ្ទុកទិន្នន័យ (Content Pages) -->
+        <main id="mainContent" class="p-6 space-y-8" style="max-height: 70vh; overflow-y: auto;">
+
+            <!-- Page 1: វេនធ្វើការ (Shifts) -->
+            <div id="page-shifts" class="page-container">
+                <!-- Loading Spinner -->
+                <div id="loadingSpinnerShifts" class="flex justify-center items-center py-12">
+                    <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <!-- ទិន្នន័យនឹងត្រូវបានបង្ហាញនៅទីនេះដោយ JavaScript -->
+                <div id="shiftsDataContainer" class="space-y-8"></div>
+            </div>
+
+            <!-- Page 2: ចូលយឺត (CheckInLate) -->
+            <div id="page-late" class="page-container hidden">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">កំណត់ត្រាការចូលយឺត (CheckInLate)</h2>
+                <!-- Loading Spinner -->
+                <div id="loadingSpinnerLate" class="flex justify-center items-center py-12">
+                    <svg class="animate-spin h-10 w-10 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <!-- ទិន្នន័យចូលយឺតនឹងបង្ហាញនៅទីនេះ -->
+                <!-- កែសម្រួល class ពី space-y-4 ទៅ space-y-8 សម្រាប់ Card -->
+                <div id="lateDataContainer" class="space-y-8"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Mobile Footer Navigation Bar (បង្ហាញតែលើចតូច) -->
+    <footer id="navigation-bar" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden z-10">
+        <nav class="flex justify-around max-w-5xl mx-auto">
+            <!-- ប៊ូតុង វេនធ្វើការ -->
+            <button id="nav-shifts" class="nav-btn flex-1 p-3 text-center text-blue-600 border-t-4 border-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="block text-xs font-medium">វេនធ្វើការ</span>
+            </button>
+            <!-- ប៊ូតុង ចូលយឺត -->
+            <button id="nav-late" class="nav-btn flex-1 p-3 text-center text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="block text-xs font-medium">ចូលយឺត</span>
+            </button>
+        </nav>
+    </footer>
+
+
+    <!-- ភ្ជាប់ Firebase SDK -->
+    <script type="module">
+        // នាំចូល Firebase modules ដែលត្រូវការ
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+        // --- ! សំខាន់ جدا (IMPORTANT) ! ---
+        // Firebase Config របស់អ្នក (ដកស្រង់ពីមុន)
+       const firebaseConfig = {
+          apiKey: "AIzaSyCgc3fq9mDHMCjTRRHD3BPBL31JkKZgXFc",
+          authDomain: "checkme-10e18.firebaseapp.com",
+          databaseURL: "https://checkme-10e18-default-rtdb.firebaseio.com",
+          projectId: "checkme-10e18",
+          storageBucket: "checkme-10e18.firebasestorage.app",
+          messagingSenderId: "1030447497157",
+          appId: "1:1030447497157:web:9792086df1e864559fd5ac",
+          measurementId: "G-QCJ2JH4WH6"
+        };
+        // --- ! បញ្ចប់ផ្នែកដែលត្រូវកែ ! ---
+
+        // មិនត្រូវកែប្រែ កូដខាងក្រោមនេះទេ
+        try {
+            // 1. ចាប់ផ្ដើម Firebase
+            const app = initializeApp(firebaseConfig);
+            const db = getDatabase(app);
+            const auth = getAuth(app);
+            
+            // យក DOM Elements សម្រាប់គ្រប់គ្រង
+            const statusEl = document.getElementById('statusMessage');
+            
+            // Page 1 Elements
+            const shiftsDataContainer = document.getElementById('shiftsDataContainer');
+            const loadingSpinnerShifts = document.getElementById('loadingSpinnerShifts');
+
+            // Page 2 Elements
+            const lateDataContainer = document.getElementById('lateDataContainer');
+            const loadingSpinnerLate = document.getElementById('loadingSpinnerLate');
+
+            // Page containers
+            const pages = document.querySelectorAll('.page-container');
+            
+            // Navigation Elements
+            const navButtons = document.querySelectorAll('.nav-btn');
+            const tabButtons = document.querySelectorAll('.tab-btn');
+
+            // --- មុខងារគ្រប់គ្រង Page (Navigation) ---
+            function showPage(pageId) {
+                // លាក់ Page ទាំងអស់
+                pages.forEach(page => page.classList.add('hidden'));
+                
+                // បង្ហាញ Page គោលដៅ
+                const targetPage = document.getElementById(pageId);
+                if (targetPage) {
+                    targetPage.classList.remove('hidden');
+                }
+
+                // កំណត់ Active State សម្រាប់ Mobile Nav
+                navButtons.forEach(btn => {
+                    btn.classList.remove('text-blue-600', 'border-t-4', 'border-blue-600');
+                    btn.classList.add('text-gray-500');
+                });
+                const activeNavBtn = document.getElementById(`nav-${pageId.split('-')[1]}`); // e.g., 'nav-shifts'
+                if (activeNavBtn) {
+                    activeNavBtn.classList.add('text-blue-600', 'border-t-4', 'border-blue-600');
+                    activeNavBtn.classList.remove('text-gray-500');
+                }
+
+                // កំណត់ Active State សម្រាប់ Desktop Tabs
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('text-blue-600', 'border-b-4', 'border-blue-600');
+                    btn.classList.add('text-gray-500', 'hover:text-gray-700');
+                });
+                const activeTabBtn = document.getElementById(`tab-${pageId.split('-')[1]}`); // e.g., 'tab-shifts'
+                if (activeTabBtn) {
+                    activeTabBtn.classList.add('text-blue-600', 'border-b-4', 'border-blue-600');
+                    activeTabBtn.classList.remove('text-gray-500', 'hover:text-gray-700');
+                }
+            }
+
+            // បន្ថែម Event Listeners ទៅប៊ូតុង Nav ទាំងអស់
+            navButtons.forEach(btn => {
+                btn.addEventListener('click', () => showPage(`page-${btn.id.split('-')[1]}`));
+            });
+            tabButtons.forEach(btn => {
+                btn.addEventListener('click', () => showPage(`page-${btn.id.split('-')[1]}`));
+            });
+
+            // បង្ហាញ Page "Shifts" ជា Default
+            showPage('page-shifts');
+
+
+            // 2. ធ្វើការ Login (ជាលក្ខណៈអនាមិក)
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    // User is signed in.
+                    showStatus('បានផ្ទៀងផ្ទាត់! កំពុងទាញទិន្នន័យ...', 'info');
+                    // ចាប់ផ្ដើមទាញទិន្នន័យសម្រាប់ Page ទាំងពីរ
+                    loadShiftsData();
+                    loadLateData();
+                } else {
+                    // User is signed out, try to sign in.
+                    showStatus('កំពុងផ្ទៀងផ្ទាត់...', 'loading');
+                    signInAnonymously(auth).catch((error) => {
+                        console.error("Authentication Error:", error);
+                        showStatus(`ការផ្ទៀងផ្ទាត់បានបរាជ័យ៖ ${error.message} សូមពិនិត្យ Firebase Config និង Security Rules របស់អ្នក។`, 'error');
+                        loadingSpinnerShifts.style.display = 'none';
+                        loadingSpinnerLate.style.display = 'none';
+                    });
+                }
+            });
+
+            // 3. មុខងារទាញទិន្នន័យ "វេនធ្វើការ" (Page 1)
+            function loadShiftsData() {
+                const dbRef = ref(db, '/វេនធ្វើការ'); // ទាញទិន្នន័យពី node "វេនធ្វើការ"
+                
+                onValue(dbRef, (snapshot) => {
+                    const data = snapshot.val();
+                    shiftsDataContainer.innerHTML = ''; // សម្អាតទិន្នន័យចាស់
+                    loadingSpinnerShifts.style.display = 'none'; // លាក់ Spinner
+                    
+                    if (!data) {
+                        showStatus('មិនមានទិន្នន័យក្នុង /វេនធ្វើការ ទេ។', 'warning');
+                        return;
+                    }
+
+                    // បង្កើត Card សម្រាប់ទីតាំង/ថ្ងៃនីមួយៗ
+                    for (const locationName in data) {
+                        if (typeof data[locationName] === 'object' && data[locationName] !== null) {
+                            const locationData = data[locationName];
+                            const locationCard = createLocationCard(locationName, locationData);
+                            shiftsDataContainer.appendChild(locationCard);
+                        }
+                    }
+                    showStatus('បានទាញទិន្នន័យដោយជោគជ័យ។', 'success');
+
+                }, (error) => {
+                    console.error("Shifts Data Load Error:", error);
+                    showStatus(`Error pulling data from /វេនធ្វើការ: ${error.message}.`, 'error');
+                    loadingSpinnerShifts.style.display = 'none';
+                });
+            }
+
+            // 4. មុខងារទាញទិន្នន័យ "ចូលយឺត" (Page 2)
+            function loadLateData() {
+                const dbRef = ref(db, '/CheckInLate'); // ទាញទិន្នន័យពី node "CheckInLate"
+                
+                onValue(dbRef, (snapshot) => {
+                    const data = snapshot.val();
+                    lateDataContainer.innerHTML = ''; // សម្អាតទិន្នន័យចាស់
+                    loadingSpinnerLate.style.display = 'none'; // លាក់ Spinner
+
+                    if (!data) {
+                        lateDataContainer.innerHTML = '<p class="text-gray-500 text-center">មិនមានទិន្នន័យក្នុង /CheckInLate ទេ។</p>';
+                        return;
+                    }
+
+                    // បង្កើត Card សម្រាប់ថ្ងៃនីមួយៗ (ជំនួសឲ្យ List)
+                    for (const dayName in data) {
+                        if (typeof data[dayName] === 'object' && data[dayName] !== null) {
+                            const dayData = data[dayName];
+                            // ហៅមុខងារថ្មីដើម្បីបង្កើត Card សម្រាប់កែសម្រួល
+                            const lateCard = createLateCard(dayName, dayData);
+                            lateDataContainer.appendChild(lateCard);
+                        }
+                    }
+
+                }, (error) => {
+                    console.error("Late Data Load Error:", error);
+                    lateDataContainer.innerHTML = `<p class="text-red-600">Error pulling data from /CheckInLate: ${error.message}</p>`;
+                    loadingSpinnerLate.style.display = 'none';
+                });
+            }
+
+
+            // 5. មុខងារបង្កើត Card សម្រាប់កែប្រែ (សម្រាប់ Page 1)
+            function createLocationCard(locationName, locationData) {
+                const card = document.createElement('div');
+                card.className = 'bg-white shadow border border-gray-200 rounded-lg p-6';
+
+                let fieldsHTML = '';
+                const timeKeys = ['StartCheckin', 'EndCheckin', 'StartCheckOut', 'EndCheckOut'];
+                const objectKeys = Object.keys(locationData);
+
+                timeKeys.forEach(stdKey => {
+                    const actualKey = objectKeys.find(k => k.toLowerCase() === stdKey.toLowerCase());
+                    const value = actualKey ? locationData[actualKey] : ''; 
+                    const value24 = convertTo24Hour(value);
+                    
+                    fieldsHTML += `
+                        <div class="grid grid-cols-2 gap-4 items-center">
+                            <label for="${locationName}-${stdKey}" class="font-medium text-gray-700">${stdKey}:</label>
+                            <input type="time" id="${locationName}-${stdKey}" value="${value24}"
+                                   data-actual-key="${actualKey || stdKey}"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    `;
+                });
+
+                card.innerHTML = `
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">${locationName}</h2>
+                    <div class="space-y-4">
+                        ${fieldsHTML}
+                    </div>
+                    <div class="mt-6 text-right">
+                        <button data-location="${locationName}" 
+                                class="save-btn inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            រក្សាទុក (Save)
+                        </button>
+                    </div>
+                `;
+
+                card.querySelector('.save-btn').addEventListener('click', handleSave);
+                return card;
+            }
+
+            // 5b. មុខងារថ្មី៖ បង្កើត Card សម្រាប់ Page "ចូលយឺត"
+            function createLateCard(dayName, dayData) {
+                const card = document.createElement('div');
+                card.className = 'bg-white shadow border border-gray-200 rounded-lg p-6';
+
+                // យកតម្លៃ Uptime
+                const value = dayData.Uptime || ''; 
+                const value24 = convertTo24Hour(value);
+                
+                let fieldsHTML = `
+                    <div class="grid grid-cols-2 gap-4 items-center">
+                        <label for="${dayName}-Uptime" class="font-medium text-gray-700">Uptime:</label>
+                        <input type="time" id="${dayName}-Uptime" value="${value24}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                `;
+
+                card.innerHTML = `
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">${dayName}</h2>
+                    <div class="space-y-4">
+                        ${fieldsHTML}
+                    </div>
+                    <div class="mt-6 text-right">
+                        <button data-day="${dayName}" 
+                                class="save-late-btn inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                            រក្សាទុក (Save)
+                        </button>
+                    </div>
+                `;
+
+                // បន្ថែម Event Listener សម្រាប់ប៊ូតុង Save ថ្មី
+                card.querySelector('.save-late-btn').addEventListener('click', handleLateSave);
+                return card;
+            }
+
+            // 6. មុខងារពេលចុច Save (សម្រាប់ Page 1)
+            async function handleSave(event) {
+                const button = event.currentTarget;
+                const locationName = button.dataset.location;
+                
+                button.textContent = 'កំពុងរក្សាទុក...';
+                button.disabled = true;
+
+                const dataToSave = {};
+                const timeKeys = ['StartCheckin', 'EndCheckin', 'StartCheckOut', 'EndCheckOut'];
+
+                timeKeys.forEach(stdKey => {
+                    const input = document.getElementById(`${locationName}-${stdKey}`);
+                    const keyToSave = input.dataset.actualKey;
+                    const time24 = input.value;
+                    
+                    dataToSave[keyToSave] = convertTo12Hour(time24);
+                });
+
+                try {
+                    const locationRef = ref(db, '/វេនធ្វើការ/' + locationName);
+                    await update(locationRef, dataToSave);
+                    showStatus(`បានរក្សាទុកទិន្នន័យសម្រាប់ "${locationName}" ដោយជោគជ័យ!`, 'success');
+                } catch (error) {
+                    console.error("Save Error:", error);
+                    showStatus(`Error saving data for "${locationName}": ${error.message}`, 'error');
+                } finally {
+                    button.textContent = 'រក្សាទុក (Save)';
+                    button.disabled = false;
+                }
+            }
+
+            // 6b. មុខងារថ្មី៖ មុខងារពេលចុច Save សម្រាប់ Page "ចូលយឺត"
+            async function handleLateSave(event) {
+                const button = event.currentTarget;
+                const dayName = button.dataset.day; // យកឈ្មោះថ្ងៃពី data attribute
+                
+                button.textContent = 'កំពុងរក្សាទុក...';
+                button.disabled = true;
+
+                const dataToSave = {};
+                
+                // យកតម្លៃពី Input
+                const input = document.getElementById(`${dayName}-Uptime`);
+                const time24 = input.value;
+                
+                // បំប្លែង និងរក្សាទុកតែ Uptime
+                dataToSave['Uptime'] = convertTo12Hour(time24);
+
+                try {
+                    // រក្សាទុកទៅ Path /CheckInLate/[dayName]
+                    const locationRef = ref(db, '/CheckInLate/' + dayName);
+                    await update(locationRef, dataToSave);
+                    showStatus(`បានរក្សាទុកទិន្នន័យសម្រាប់ "${dayName}" ដោយជោគជ័យ!`, 'success');
+                } catch (error) {
+                    console.error("Save Late Error:", error);
+                    showStatus(`Error saving data for "${dayName}": ${error.message}`, 'error');
+                } finally {
+                    button.textContent = 'រក្សាទុក (Save)';
+                    button.disabled = false;
+                }
+            }
+
+            // --- មុខងារជំនួយ (Helpers) ---
+
+            function showStatus(message, type = 'info') {
+                statusEl.innerHTML = `<p>${message}</p>`;
+                statusEl.className = 'px-6 py-4 border-b border-gray-200 transition-all'; // Reset class
+                
+                if (type === 'success') {
+                    statusEl.classList.add('bg-green-100', 'text-green-800');
+                } else if (type === 'error') {
+                    statusEl.classList.add('bg-red-100', 'text-red-800');
+                } else if (type === 'warning') {
+                    statusEl.classList.add('bg-yellow-100', 'text-yellow-800');
+                } else {
+                    statusEl.classList.add('bg-blue-100', 'text-blue-800');
+                }
+            }
+
+            function convertTo24Hour(time12h) {
+                if (!time12h) return '';
+                try {
+                    const [time, modifier] = time12h.split(' ');
+                    let [hours, minutes] = time.split(':');
+                    
+                    if (hours === '12') {
+                        hours = '00';
+                    }
+                    if (modifier && modifier.toUpperCase() === 'PM') {
+                        hours = parseInt(hours, 10) + 12;
+                    }
+                    return `${String(hours).padStart(2, '0')}:${minutes}`;
+                } catch (e) {
+                    console.warn(`Invalid time format: ${time12h}`);
+                    return '';
+                }
+            }
+
+            function convertTo12Hour(time24) {
+                if (!time24) return '';
+                try {
+                    let [hours, minutes] = time24.split(':');
+                    const modifier = parseInt(hours, 10) >= 12 ? 'PM' : 'AM';
+                    hours = parseInt(hours, 10) % 12 || 12;
+                    
+                    return `${hours}:${minutes} ${modifier}`;
+                } catch (e) {
+                    console.warn(`Invalid 24h time: ${time24}`);
+                    return '';
+                }
+            }
+
+        } catch (e) {
+            console.error("Initialization Error:", e);
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.innerHTML = `<p><strong>Initialization Error:</strong> ${e.message}. Did you paste your full Firebase Config object?</p>`;
+            statusEl.className = 'p-6 bg-red-100 text-red-800';
+            document.getElementById('loadingSpinnerShifts').style.display = 'none';
+            document.getElementById('loadingSpinnerLate').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
